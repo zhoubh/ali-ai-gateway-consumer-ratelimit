@@ -1,0 +1,20 @@
+quotaService:
+  serviceName: global-quota-service.dns
+  servicePort: 8080
+  reservePath: /v1/ratelimit/reserve
+  refundPath: /v1/ratelimit/refund
+  timeoutMs: 50
+
+identity:
+  tenantHeader: x-tenant-id
+  consumerHeader: x-consumer-id
+
+token:
+  estimatedTokensHeader: x-ai-estimated-tokens
+  actualTokensHeader: x-ai-actual-tokens
+  defaultEstimatedTokens: 1000
+  refundEnabled: true
+
+gatewayId: gw-prod
+failOpen: false
+

@@ -1,0 +1,14 @@
+{
+  "name": "ai-gateway-global-consumer-rate-limit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Global consumer QPS and TPM fixed-window rate limiter for AI gateway plugins.",
+  "main": "src/globalConsumerRateLimiter.js",
+  "scripts": {
+    "start:quota": "node src/quotaServiceServer.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
