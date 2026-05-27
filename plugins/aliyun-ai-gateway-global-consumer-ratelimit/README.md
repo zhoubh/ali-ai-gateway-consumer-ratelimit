@@ -60,7 +60,9 @@ quotaService:
 
 identity:
   tenantHeader: x-tenant-id
-  consumerHeader: x-consumer-id
+  consumerHeaders:
+    - x-mse-consumer
+    - x-consumer-id
 
 token:
   estimatedTokensHeader: x-ai-estimated-tokens
@@ -71,6 +73,8 @@ token:
 gatewayId: gw-prod
 failOpen: false
 ```
+
+Consumer identity is resolved from `identity.consumerHeaders` in order. The default is `x-mse-consumer` first, then `x-consumer-id` for dev curl testing or custom auth adapters.
 
 ## 部署位置
 
@@ -133,4 +137,3 @@ Consumer Auth
   "actualTokens": 700
 }
 ```
-

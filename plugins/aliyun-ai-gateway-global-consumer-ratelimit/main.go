@@ -42,10 +42,10 @@ type PluginConfig struct {
 	tenantHeader    string
 	consumerHeaders []string
 
-	estimatedTokensHeader string
-	actualTokensHeader    string
+	estimatedTokensHeader  string
+	actualTokensHeader     string
 	defaultEstimatedTokens int64
-	refundEnabled         bool
+	refundEnabled          bool
 }
 
 type reserveRequest struct {
