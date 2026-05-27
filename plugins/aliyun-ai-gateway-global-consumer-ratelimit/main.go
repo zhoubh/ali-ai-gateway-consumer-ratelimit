@@ -39,8 +39,8 @@ type PluginConfig struct {
 	refundPath  string
 	timeoutMs   uint32
 
-	tenantHeader   string
-	consumerHeader string
+	tenantHeader    string
+	consumerHeaders []string
 
 	estimatedTokensHeader string
 	actualTokensHeader    string
@@ -93,7 +93,11 @@ func parseConfig(jsonResult gjson.Result, config *PluginConfig, log logs.Log) er
 	config.timeoutMs = uint32(timeoutMs)
 
 	config.tenantHeader = defaultString(jsonResult.Get("identity.tenantHeader").String(), "x-tenant-id")
-	config.consumerHeader = defaultString(jsonResult.Get("identity.consumerHeader").String(), "x-consumer-id")
+	config.consumerHeaders = stringList(
+		jsonResult.Get("identity.consumerHeaders"),
+		defaultString(jsonResult.Get("identity.consumerHeader").String(), ""),
+		[]string{"x-mse-consumer", "x-consumer-id"},
+	)
 
 	config.estimatedTokensHeader = defaultString(jsonResult.Get("token.estimatedTokensHeader").String(), "x-ai-estimated-tokens")
 	config.actualTokensHeader = defaultString(jsonResult.Get("token.actualTokensHeader").String(), "x-ai-actual-tokens")
@@ -105,19 +109,20 @@ func parseConfig(jsonResult gjson.Result, config *PluginConfig, log logs.Log) er
 	config.defaultEstimatedTokens = defaultEstimatedTokens
 	config.refundEnabled = jsonResult.Get("token.refundEnabled").Bool()
 
-	log.Infof("global consumer ratelimit plugin configured, quotaService=%s:%d, reservePath=%s", serviceName, servicePort, config.reservePath)
+	log.Infof("global consumer ratelimit plugin configured, quotaService=%s:%d, reservePath=%s, consumerHeaders=%v", serviceName, servicePort, config.reservePath, config.consumerHeaders)
 	return nil
 }
 
 func onHttpRequestHeaders(ctx wrapper.HttpContext, config PluginConfig, log logs.Log) types.Action {
 	tenantID := readHeader(config.tenantHeader)
-	consumerID := readHeader(config.consumerHeader)
+	consumerID, consumerHeader := readFirstHeader(config.consumerHeaders)
 	if consumerID == "" {
-		return handlePluginFailure(config, log, "missing consumer header: "+config.consumerHeader)
+		return handlePluginFailure(config, log, "missing consumer header, candidates: "+strings.Join(config.consumerHeaders, ","))
 	}
 	if tenantID == "" {
 		tenantID = "*"
 	}
+	log.Debugf("resolved consumer identity, tenant=%s, consumer=%s, header=%s", tenantID, consumerID, consumerHeader)
 
 	estimatedTokens := parsePositiveInt64(readHeader(config.estimatedTokensHeader), config.defaultEstimatedTokens)
 	body, err := json.Marshal(reserveRequest{
@@ -271,6 +276,16 @@ func readHeader(name string) string {
 	return strings.TrimSpace(value)
 }
 
+func readFirstHeader(names []string) (string, string) {
+	for _, name := range names {
+		value := readHeader(name)
+		if value != "" {
+			return value, name
+		}
+	}
+	return "", ""
+}
+
 func readResponseHeader(name string) string {
 	value, err := proxywasm.GetHttpResponseHeader(name)
 	if err != nil {
@@ -285,6 +300,46 @@ func defaultString(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func stringList(result gjson.Result, legacy string, fallback []string) []string {
+	values := make([]string, 0)
+	if result.Exists() {
+		if result.IsArray() {
+			result.ForEach(func(_, item gjson.Result) bool {
+				appendCSV(&values, item.String())
+				return true
+			})
+		} else {
+			appendCSV(&values, result.String())
+		}
+	}
+	appendCSV(&values, legacy)
+	if len(values) == 0 {
+		values = append(values, fallback...)
+	}
+	return uniqueStrings(values)
+}
+
+func appendCSV(values *[]string, raw string) {
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.ToLower(strings.TrimSpace(item))
+		if item != "" {
+			*values = append(*values, item)
+		}
+	}
+}
+
+func uniqueStrings(values []string) []string {
+	seen := map[string]bool{}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func parsePositiveInt64(value string, fallback int64) int64 {

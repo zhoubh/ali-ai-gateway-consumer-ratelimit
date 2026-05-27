@@ -7,7 +7,11 @@ quotaService:
 
 identity:
   tenantHeader: x-tenant-id
-  consumerHeader: x-consumer-id
+  # Aliyun key-auth style auth plugins commonly inject X-Mse-Consumer.
+  # Keep x-consumer-id for dev curl testing or custom auth adapters.
+  consumerHeaders:
+    - x-mse-consumer
+    - x-consumer-id
 
 token:
   estimatedTokensHeader: x-ai-estimated-tokens
@@ -17,4 +21,3 @@ token:
 
 gatewayId: gw-prod
 failOpen: false
-
