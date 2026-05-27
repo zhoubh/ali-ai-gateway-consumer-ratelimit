@@ -6,11 +6,25 @@ const {
   GlobalConsumerRateLimiter,
   InMemoryAtomicStore
 } = require('./globalConsumerRateLimiter');
+const { RedisClient } = require('./redisClient');
+const { RedisLuaAtomicStore } = require('./redisLuaAtomicStore');
+const {
+  InMemoryReservationStore,
+  RedisReservationStore
+} = require('./reservationStore');
 
 function createQuotaService(options = {}) {
-  const reservations = new Map();
+  const redisClient = options.redisClient || createRedisClientFromEnv();
+  const store = options.store || (redisClient
+    ? new RedisLuaAtomicStore(redisClient)
+    : new InMemoryAtomicStore());
+  const reservationStore = options.reservationStore || (redisClient
+    ? new RedisReservationStore(redisClient, {
+      keyPrefix: process.env.RESERVATION_KEY_PREFIX
+    })
+    : new InMemoryReservationStore());
   const limiter = options.limiter || new GlobalConsumerRateLimiter({
-    store: options.store || new InMemoryAtomicStore(),
+    store,
     gatewayId: options.gatewayId || process.env.GATEWAY_ID || 'dev',
     defaultLimit: {
       qps: numberFromEnv('DEFAULT_QPS', 2),
@@ -22,12 +36,18 @@ function createQuotaService(options = {}) {
   return http.createServer(async (req, res) => {
     try {
       if (req.method === 'GET' && req.url === '/healthz') {
-        return writeJSON(res, 200, { ok: true });
+        if (redisClient) {
+          await redisClient.ping();
+        }
+        return writeJSON(res, 200, {
+          ok: true,
+          store: redisClient ? 'redis' : 'memory'
+        });
       }
 
       if (req.method === 'POST' && req.url === '/v1/ratelimit/reserve') {
         const body = await readJSON(req);
-        const result = limiter.checkRequest({
+        const result = await limiter.checkRequestAsync({
           tenantId: body.tenantId,
           consumerId: body.consumerId,
           estimatedTokens: body.estimatedTokens
@@ -44,7 +64,11 @@ function createQuotaService(options = {}) {
         }
 
         const reservationId = randomUUID();
-        reservations.set(reservationId, result.reservation);
+        await reservationStore.set(
+          reservationId,
+          result.reservation,
+          numberFromEnv('RESERVATION_TTL_SECONDS', 120)
+        );
 
         return writeJSON(res, 200, {
           allowed: true,
@@ -55,16 +79,16 @@ function createQuotaService(options = {}) {
 
       if (req.method === 'POST' && req.url === '/v1/ratelimit/refund') {
         const body = await readJSON(req);
-        const reservation = reservations.get(body.reservationId);
+        const reservation = await reservationStore.get(body.reservationId);
         if (!reservation) {
           return writeJSON(res, 404, { error: 'reservation not found' });
         }
 
-        const result = limiter.completeRequest({
+        const result = await limiter.completeRequestAsync({
           reservation,
           actualTokens: body.actualTokens
         });
-        reservations.delete(body.reservationId);
+        await reservationStore.delete(body.reservationId);
 
         return writeJSON(res, 200, {
           refundedTokens: result.refundedTokens,
@@ -76,6 +100,26 @@ function createQuotaService(options = {}) {
     } catch (error) {
       writeJSON(res, 500, { error: error.message });
     }
+  });
+}
+
+function createRedisClientFromEnv() {
+  const storeType = String(process.env.STORE || '').toLowerCase();
+  if (storeType !== 'redis' && !process.env.REDIS_URL) {
+    return null;
+  }
+
+  if (process.env.REDIS_URL) {
+    return RedisClient.fromURL(process.env.REDIS_URL);
+  }
+
+  return new RedisClient({
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: numberFromEnv('REDIS_PORT', 6379),
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+    database: process.env.REDIS_DATABASE ? Number(process.env.REDIS_DATABASE) : undefined,
+    tls: String(process.env.REDIS_TLS || '').toLowerCase() === 'true'
   });
 }
 
@@ -124,5 +168,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  createQuotaService
+  createQuotaService,
+  createRedisClientFromEnv
 };

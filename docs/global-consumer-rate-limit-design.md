@@ -134,6 +134,42 @@ Redis 是全局一致性的关键组件。建议策略可配置：
 - 内部高优消费者：`fail_open`
 - 免费/外部消费者：`fail_close`
 
+## 10.1 Quota Service Redis/Tair 配置
+
+Quota Service 支持两种运行模式：
+
+```text
+memory: 本地开发和单进程测试
+redis: 连接阿里云 Redis/Tair，支持多副本和跨网关实例全局一致限流
+```
+
+Redis/Tair 环境变量：
+
+```text
+STORE=redis
+REDIS_URL=redis://:password@redis-host:6379/0
+```
+
+或者：
+
+```text
+STORE=redis
+REDIS_HOST=redis-host
+REDIS_PORT=6379
+REDIS_USERNAME=default
+REDIS_PASSWORD=password
+REDIS_DATABASE=0
+REDIS_TLS=false
+```
+
+reservation 存储也会使用 Redis：
+
+```text
+ai_gateway:reservation:{reservation_id}
+```
+
+这样响应阶段的 `/v1/ratelimit/refund` 可以由任意 Quota Service 副本处理。
+
 ## 11. 429 响应
 
 ```json
@@ -176,4 +212,3 @@ X-RateLimit-Remaining-TPM: 23500
 - `consumer_id`
 - `limit_type`
 - `gateway_id`
-

@@ -31,3 +31,58 @@ node --test
 ```bash
 npm test
 ```
+
+## Quota Service
+
+本项目包含一个可直接部署的 Quota Service：
+
+```bash
+node src/quotaServiceServer.js
+```
+
+默认使用内存 Store，适合本地调试：
+
+```bash
+DEFAULT_QPS=2 DEFAULT_TPM=1000 node src/quotaServiceServer.js
+```
+
+接入阿里云 Redis/Tair 时，启用 Redis Store：
+
+```bash
+STORE=redis \
+REDIS_URL=redis://:password@redis-host:6379/0 \
+GATEWAY_ID=dev-ai-gateway \
+DEFAULT_QPS=20 \
+DEFAULT_TPM=100000 \
+node src/quotaServiceServer.js
+```
+
+也可以拆成独立环境变量：
+
+```bash
+STORE=redis
+REDIS_HOST=redis-host
+REDIS_PORT=6379
+REDIS_USERNAME=default
+REDIS_PASSWORD=password
+REDIS_DATABASE=0
+REDIS_TLS=false
+```
+
+Quota Service 提供：
+
+```text
+GET  /healthz
+POST /v1/ratelimit/reserve
+POST /v1/ratelimit/refund
+```
+
+`reserve` 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/ratelimit/reserve \
+  -H "content-type: application/json" \
+  -d '{"gatewayId":"dev-ai-gateway","tenantId":"tenant-a","consumerId":"consumer-a","estimatedTokens":100}'
+```
+
+Redis/Tair 模式下，QPS/TPM 计数和 reservation 都存储在 Redis 中，可以支持 Quota Service 多副本部署。
