@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI App Forge | 一句话应用工厂</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="homeView" class="view home-view">
+      <nav class="topbar" aria-label="Product navigation">
+        <div>
+          <p class="eyebrow">AI App Forge</p>
+          <h1>一句话应用工厂</h1>
+        </div>
+        <button id="galleryButton" class="icon-button" type="button" aria-label="查看灵感模板" title="查看灵感模板">✦</button>
+      </nav>
+
+      <div class="hero-grid">
+        <section class="prompt-panel" aria-labelledby="promptTitle">
+          <p class="eyebrow">Say it. Forge it. Play it.</p>
+          <h2 id="promptTitle">输入一个想法，生成可运行的小工具或小游戏。</h2>
+          <form id="promptForm" class="prompt-form">
+            <label for="promptInput">你的想法</label>
+            <textarea id="promptInput" name="prompt" rows="5" placeholder="例如：做一个像素风躲避 bug 的小游戏，主角吃咖啡加分。" required></textarea>
+
+            <div class="control-row" role="group" aria-label="应用类型">
+              <button class="segmented active" type="button" data-app-type="auto">自动判断</button>
+              <button class="segmented" type="button" data-app-type="tool">小工具</button>
+              <button class="segmented" type="button" data-app-type="game">小游戏</button>
+            </div>
+
+            <div class="style-row" role="group" aria-label="视觉风格">
+              <button type="button" class="style-chip active" data-style="playful">活泼</button>
+              <button type="button" class="style-chip" data-style="clean">简洁</button>
+              <button type="button" class="style-chip" data-style="pixel">像素</button>
+              <button type="button" class="style-chip" data-style="fresh">清新</button>
+            </div>
+
+            <button class="primary-action" type="submit">
+              <span>开始生成</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+        </section>
+
+        <section class="idea-panel" aria-labelledby="ideasTitle">
+          <h2 id="ideasTitle">试试这些</h2>
+          <div class="example-list">
+            <button type="button" class="example-card" data-prompt="做一个旅行预算计算器，可以输入人数、天数、交通、住宿、餐饮和娱乐费用。">
+              <strong>旅行预算计算器</strong>
+              <span>输入费用，自动算总预算和人均费用。</span>
+            </button>
+            <button type="button" class="example-card" data-prompt="做一个像素风躲避 bug 的小游戏，主角是程序员，吃咖啡可以加分。">
+              <strong>Bug Dodge</strong>
+              <span>左右移动，躲开 bug，收集咖啡。</span>
+            </button>
+            <button type="button" class="example-card" data-prompt="做一个抽奖转盘，可以输入参与者名字，点击按钮随机抽出幸运用户。">
+              <strong>抽奖转盘</strong>
+              <span>适合活动、社群和办公室小游戏。</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="progressView" class="view progress-view hidden" aria-labelledby="progressTitle">
+      <div class="progress-header">
+        <button id="backHomeFromProgress" class="text-button" type="button">返回</button>
+        <p class="eyebrow">Forge run</p>
+        <h2 id="progressTitle">AI 正在把想法锻造成应用</h2>
+        <p id="progressPrompt" class="muted"></p>
+      </div>
+
+      <ol id="progressSteps" class="progress-steps"></ol>
+    </section>
+
+    <section id="previewView" class="view preview-view hidden" aria-labelledby="previewTitle">
+      <header class="workspace-header">
+        <div>
+          <p class="eyebrow">Preview</p>
+          <h2 id="previewTitle">生成结果</h2>
+        </div>
+        <div class="workspace-actions">
+          <button id="newAppButton" class="text-button" type="button">新建</button>
+          <button id="shareButton" class="secondary-action" type="button">分享</button>
+        </div>
+      </header>
+
+      <div class="workspace-grid">
+        <section class="preview-stage" aria-label="应用预览">
+          <iframe id="appPreview" title="Generated app preview" sandbox="allow-scripts"></iframe>
+        </section>
+
+        <aside class="inspector">
+          <div class="tab-row" role="tablist" aria-label="详情">
+            <button class="tab active" type="button" data-tab="modify">修改</button>
+            <button class="tab" type="button" data-tab="spec">Spec</button>
+            <button class="tab" type="button" data-tab="tests">测试</button>
+          </div>
+
+          <section id="modifyTab" class="tab-panel">
+            <form id="modifyForm" class="modify-form">
+              <label for="modifyInput">继续告诉 AI 怎么改</label>
+              <textarea id="modifyInput" rows="4" placeholder="例如：按钮更大一点，难度提高，换成像素风。"></textarea>
+              <button class="primary-action compact" type="submit">生成新版本</button>
+            </form>
+            <div id="versionList" class="version-list" aria-live="polite"></div>
+          </section>
+
+          <section id="specTab" class="tab-panel hidden">
+            <pre id="specOutput"></pre>
+          </section>
+
+          <section id="testsTab" class="tab-panel hidden">
+            <div id="testOutput" class="test-output"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
